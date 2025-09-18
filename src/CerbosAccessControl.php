@@ -42,6 +42,21 @@ class CerbosAccessControl extends ActionFilter
     public $systemPrefix = null;
 
     /**
+     * @var string|null Project code for multi-tenant role filtering
+     */
+    public $projectCode = null;
+
+    /**
+     * @var string Database component name for role queries
+     */
+    public $db = 'db';
+
+    /**
+     * @var string Table name for auth assignments
+     */
+    public $authAssignmentTable = 'auth_assignment';
+
+    /**
      * @inheritdoc
      */
     public function beforeAction($action)
@@ -139,7 +154,7 @@ class CerbosAccessControl extends ActionFilter
             }
 
             Yii::info("CerbosAccessControl: Calling Cerbos API - Resource: {$resourceName}, Action: {$mapping['action']}, ResourceId: {$resourceId}", __METHOD__);
-            
+
             $result = Yii::$app->cerbos->checkPermission(
                 $mapping['action'],
                 $resourceName,
@@ -258,6 +273,40 @@ class CerbosAccessControl extends ActionFilter
         $pattern = '/^' . str_replace('/', '\/', $pattern) . '$/';
 
         return preg_match($pattern, $route) === 1;
+    }
+
+    /**
+     * Get current user roles from auth_assignment table
+     */
+    protected function getCurrentUserRoles($projectCode = null)
+    {
+        if (Yii::$app->user->isGuest) {
+            return ['guest'];
+        }
+
+        // Use the configured project code if no specific one is provided
+        if ($projectCode === null) {
+            $projectCode = $this->projectCode;
+        }
+
+        $query = (new \yii\db\Query())
+            ->select('item_name')
+            ->from($this->authAssignmentTable)
+            ->where(['user_id' => Yii::$app->user->identity->username]);
+
+        // Use specified database component
+        if ($this->db !== 'db') {
+            $query->db = Yii::$app->get($this->db);
+        }
+
+        // Add project_code filter if provided
+        if ($projectCode !== null) {
+            $query->andWhere(['project_code' => $projectCode]);
+        }
+
+        $roles = $query->column();
+
+        return !empty($roles) ? $roles : ['user'];
     }
 
     /**

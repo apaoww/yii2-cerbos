@@ -13,6 +13,9 @@ class CerbosHttpAuth extends Component
     public $httpHost = null; // Optional separate HTTP host
     public $plaintext = true; // For compatibility, not used in HTTP client
     public $systemPrefix = null; // System prefix for resource names
+    public $projectCode = null; // Project code for multi-tenant role filtering
+    public $db = 'db'; // Database component name for role queries
+    public $authAssignmentTable = 'auth_assignment'; // Table name for auth assignments
     
     private $httpClient;
     
@@ -186,20 +189,27 @@ class CerbosHttpAuth extends Component
     
     private function getUserRoles($user)
     {
-        $roles = ['user'];
-        
-        if (isset($user->role)) {
-            $roles[] = $user->role;
+        if (!$user) {
+            return ['guest'];
         }
-        
-        $authManager = Yii::$app->authManager;
-        if ($authManager) {
-            $userRoles = $authManager->getRolesByUser($user->id);
-            foreach ($userRoles as $role) {
-                $roles[] = $role->name;
-            }
+
+        $query = (new \yii\db\Query())
+            ->select('item_name')
+            ->from($this->authAssignmentTable)
+            ->where(['user_id' => $user->username]);
+
+        // Use specified database component
+        if ($this->db !== 'db') {
+            $query->db = Yii::$app->get($this->db);
         }
-        
-        return array_unique($roles);
+
+        // Add project_code filter if configured
+        if ($this->projectCode !== null) {
+            $query->andWhere(['project_code' => $this->projectCode]);
+        }
+
+        $roles = $query->column();
+
+        return !empty($roles) ? $roles : ['user'];
     }
 }
