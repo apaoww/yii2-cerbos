@@ -52,6 +52,9 @@ return [
             'host' => 'localhost:3592', // Your Cerbos server
             'httpHost' => null, // Optional separate HTTP host
             'systemPrefix' => 'imap', // Optional system prefix for resources
+            'projectCode' => 'imap',
+            'db' => 'db', // Use custom database component
+            'authAssignmentTable' => 'ad_sso_admin.auth_assignment',
         ],
     ],
 ];
@@ -76,6 +79,9 @@ return [
     'as access' => [
         'class' => 'apaoww\cerbos\CerbosAccessControl',
         'systemPrefix' => 'imap', // System prefix for all resources
+        'projectCode' => 'imap',
+        'db' => 'db', // Use custom database component
+        'authAssignmentTable' => 'ad_sso_admin.auth_assignment',
         'except' => ['debug/*', 'gii/*'], // Exclude debug and development tools
         'allowActions' => [
             // Public actions that don't require authentication
